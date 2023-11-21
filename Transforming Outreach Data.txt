@@ -1,0 +1,61 @@
+SELECT
+  id,
+  MessageDate2,
+  ContactDate,
+  followUpDate,
+  InstaHandle,
+  Rejected,
+  IgnoreDate,
+  REPLACE(REPLACE(InstagramURL,"https:www.instagram.com","https://www.instagram.com/"),"https:instagram.com","https://www.instagram.com/") InstagramURL,
+  Interested,
+  interestedDate,
+  Message,
+  messageSender,
+  AppointmentSetter,
+  Messaged,
+  Mute,
+  Outcome,
+  row_num,
+  row_number
+
+FROM
+
+(
+WITH TheHubOutreach AS
+
+(
+SELECT
+  CASE WHEN JSON_VALUE(data, "$.id") = "" THEN NULL ELSE JSON_VALUE(data, "$.id") END AS id,
+  DATE(CASE WHEN JSON_VALUE(data, "$.2MessageDate") = "" THEN NULL ELSE JSON_VALUE(data, "$.2MessageDate") END) AS MessageDate2,
+  DATE(CASE WHEN JSON_VALUE(data, '$.contactDate') = "" THEN NULL ELSE JSON_VALUE(data, "$.contactDate") END) AS ContactDate,
+  DATE(CASE WHEN JSON_VALUE(data, '$.followUpDate') = "" THEN NULL ELSE JSON_VALUE(data, "$.followUpDate") END) AS followUpDate,
+  CASE WHEN JSON_VALUE(data, "$.handle") = "" THEN NULL ELSE JSON_VALUE(data, "$.handle") END AS InstaHandle,
+  CASE WHEN JSON_VALUE(data, "$.ignore") = "" THEN NULL ELSE JSON_VALUE(data, "$.ignore") END AS Rejected,
+  DATE(CASE WHEN JSON_VALUE(data, "$.ignore_date") = "" THEN NULL ELSE JSON_VALUE(data, "$.ignore_date") END) AS IgnoreDate,
+  CASE WHEN JSON_VALUE(data, "$.instagram") = "" THEN NULL ELSE JSON_VALUE(data, "$.instagram") END AS InstagramURL,
+  CASE WHEN JSON_VALUE(data, "$.interested") = "" THEN NULL ELSE JSON_VALUE(data, "$.interested") END AS Interested,
+  DATE(CASE WHEN JSON_VALUE(data, '$.interestedDate') = "" THEN NULL ELSE JSON_VALUE(data, "$.interestedDate") END) AS interestedDate,
+  CASE WHEN JSON_VALUE(data, '$.message') = "" THEN NULL ELSE JSON_VALUE(data, "$.message") END AS Message,
+  CASE WHEN JSON_VALUE(data, '$.messageSender') = "" THEN NULL ELSE JSON_VALUE(data, "$.messageSender") END AS messageSender,
+  CASE WHEN JSON_VALUE(data, '$.AppointmentSetter.AppointmentSetters') = "" THEN NULL ELSE JSON_VALUE(data, '$.AppointmentSetter.AppointmentSetters') END AS AppointmentSetter, 
+  CASE WHEN JSON_VALUE(data, '$.messaged') = "" THEN NULL ELSE JSON_VALUE(data, "$.messaged") END AS Messaged,
+  CASE WHEN JSON_VALUE(data, '$.mute') = "" THEN NULL ELSE JSON_VALUE(data, "$.mute") END AS Mute,
+  CASE WHEN JSON_VALUE(data, '$.outcome') = "" THEN NULL ELSE JSON_VALUE(data, "$.outcome") END AS Outcome,
+  CASE WHEN JSON_VALUE(data, '$.tags') = "" THEN NULL ELSE JSON_VALUE(data, "$.tag") END AS tag
+
+FROM 
+  `test1-9d3bc.firestore_export.Outreach_raw_latest`
+
+)
+
+SELECT
+  *,
+  row_number() over(partition by InstagramURL, InstaHandle) rn,
+  row_number() over(partition by InstagramURL) row_number,
+  row_number() over(partition by InstagramURL, ContactDate,InstaHandle) row_num
+FROM
+  TheHubOutreach
+) TheHubOutreach
+
+WHERE
+  rn < 2 

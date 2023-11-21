@@ -1,0 +1,232 @@
+SELECT
+  Lead_Generator,
+  LgDate,
+  LgCountry,
+  LgInstagramURL,
+  Lg_LeadSource,
+  LgNot_Unique,
+  Lg_Industry,
+  OTRid,
+  OTR_followUpDate,
+  OTR_MessageDate2,
+  OTR_ContactDate,
+  OTR_InstaHandle,
+  OTR_InstagramURL,
+  OTR_Rejected,
+  OTR_IgnoreDate,
+  OTR_Interested,
+  OTR_InterestedDate,
+  OTR_Message,
+  OTR_Messaged,
+  OTR_messageSender,
+  OTR_AppointmentSetter,
+  OTR_Mute,
+  OTR_Outcome,
+  Sales_id,
+  Sales_Date,
+  Sales_Pipeline,
+  Replace(Sales_PipelineStage,"Bin (Cancelled before meet)","Bin")Sales_PipelineStage,
+  Sales_MethodOfBooking,
+  Sales_MeetingBooker,
+  Sales_accountUsedToBook,
+  Sales_Status,
+  DealOwner,
+  idealClient, 
+  row_count,
+  LeadType,
+  Universal_Date,
+  Sales_Pipelinee,
+  Sales_MethodOfBookingg,
+  AppointmentSetterAll,
+  Uploaded, 
+  UniqueLeadMessaged,
+  NotReviewed,
+
+  CASE
+  WHEN Interested_Count = 1 AND Sales_PipelineStage = "Conversation Started" OR Sales_PipelineStage = "Interested" OR Sales_PipelineStage = "New Lead" OR Sales_PipelineStage = "New Web Lead" OR
+  Sales_PipelineStage = "New Referral" THEN "Interested" ELSE NULL END Interested_Convo,  
+
+  CASE
+  WHEN No_Show_Count = 1 AND Sales_PipelineStage = "No Show" OR Sales_PipelineStage = "No show" THEN "No Show" ELSE NULL END No_Show,  
+  
+  CASE
+  WHEN Signed_Up_Count = 1 AND Sales_PipelineStage = "Signed Up" OR Sales_PipelineStage = "Signed up" THEN "Signed Up" ELSE NULL END Signed_Up, 
+
+  CASE
+  WHEN Signed_Up_Count = 1 AND idealClient = "ICP" AND Sales_PipelineStage = "Signed Up" OR Sales_PipelineStage = "Signed up" THEN "Signed Up" ELSE NULL END Signed_Up_ICP,  
+  
+  CASE
+  WHEN Meeting_Seen_Count = 1 AND Sales_PipelineStage = "Meeting Seen" OR Sales_PipelineStage = "Meeting seen"  THEN "Meeting Seen" ELSE NULL END Meeting_Seen,  
+  
+  CASE
+  WHEN Meeting_Seen_Count = 1 AND idealClient = "ICP" AND Sales_PipelineStage = "Meeting Seen" OR Sales_PipelineStage = "Meeting seen" THEN "Meeting Seen" ELSE NULL END Meeting_Seen_ICP,
+
+  CASE
+  WHEN Sales_PipelineStage = "Meeting Booked" AND Meeting_Booked_Count = 1 THEN "Meeting Booked" ELSE NULL END Meeting_Booked,
+
+  New_Referral,
+
+  CASE
+  WHEN  Rebooked_Count = 1 AND Sales_PipelineStage = "Rebooked" OR Sales_PipelineStage = "Rescheduled" OR Sales_PipelineStage Like "%Resch%" THEN "Rebooked" ELSE NULL END Rebooked,  
+
+  CASE
+  WHEN Bin_Count = 1 AND Sales_PipelineStage = "Bin" OR Sales_PipelineStage = "bin" THEN "Bin" ELSE NULL END Bin,  
+
+  Referrals_Contacted, InstaHandleAll, Unique_Leads, Messages_Sent
+
+
+FROM
+
+(
+SELECT
+  *,
+  row_number() over(partition by Sales_id, Meeting_Seen, Sales_Date, DealOwner, Sales_accountUsedToBook) AS Meeting_Seen_Count,
+  row_number() over(partition by Sales_id, Meeting_Booked, Sales_Date, DealOwner, Sales_accountUsedToBook) AS Meeting_Booked_Count,
+  row_number() over(partition by Sales_id, Signed_Up, Sales_Date, DealOwner, Sales_accountUsedToBook) AS Signed_Up_Count,
+  row_number() over(partition by Sales_id, No_Show, Sales_Date, DealOwner, Sales_accountUsedToBook) AS No_Show_Count,
+  row_number() over(partition by Sales_id, Rebooked, Sales_Date, DealOwner, Sales_accountUsedToBook) AS Rebooked_Count,
+  row_number() over(partition by Sales_id, Bin, Sales_Date, DealOwner, Sales_accountUsedToBook) AS Bin_Count,
+  row_number() over(partition by Sales_id, Interested_Convo, Sales_Date, DealOwner, Sales_accountUsedToBook) AS Interested_Count   
+
+FROM
+(
+
+WITH MasterTable AS
+(
+SELECT
+  ManualLeads.Lead_Generator AS Lead_Generator,
+  ManualLeads.Date AS LgDate,
+  ManualLeads.Country AS LgCountry,
+  TRIM(ManualLeads.instagram_URL) AS LgInstagramURL,
+  ManualLeads.lead_source AS Lg_LeadSource,
+  TRIM(ManualLeads.Unique_) AS LgNot_Unique,
+  ManualLeads.Industry AS Lg_Industry,
+  TRIM(TheHubOutreach.id) AS OTRid,
+  TheHubOutreach.followUpDate AS OTR_followUpDate,
+  TheHubOutreach.MessageDate2 AS OTR_MessageDate2,
+  TheHubOutreach.ContactDate AS OTR_ContactDate,
+  TRIM(TheHubOutreach.InstaHandle) AS OTR_InstaHandle,
+  TRIM(TheHubOutreach.InstagramURL) AS OTR_InstagramURL,
+  TRIM(TheHubOutreach.Rejected) AS OTR_Rejected,
+  TheHubOutreach.IgnoreDate AS OTR_IgnoreDate,
+  TRIM(TheHubOutreach.Interested) AS OTR_Interested,
+  TheHubOutreach.interestedDate AS OTR_InterestedDate,
+  TheHubOutreach.Message AS OTR_Message,
+  TRIM(TheHubOutreach.Messaged) AS OTR_Messaged,
+  TheHubOutreach.messageSender AS OTR_messageSender,
+  TRIM(TheHubOutreach.AppointmentSetter) AS OTR_AppointmentSetter,
+  TheHubOutreach.Mute AS OTR_Mute,
+  TRIM(TheHubOutreach.Outcome) AS OTR_Outcome,
+  TRIM(TheHubSales.id) AS Sales_id,
+  TheHubSales.Sales_Date AS Sales_Date,
+  TRIM(TheHubSales.Pipeline) AS Sales_Pipeline,
+  TRIM(TheHubSales.PipelineStage) AS Sales_PipelineStage,
+  TRIM(TheHubSales.MethodOfBooking) AS Sales_MethodOfBooking,
+  TRIM(TheHubSales.MeetingBooker) AS Sales_MeetingBooker,
+  TRIM(TheHubSales.accountUsedToBook) AS Sales_accountUsedToBook,
+  TRIM(TheHubSales.Status) AS Sales_Status,
+  TRIM(TheHubSales.DealOwner) AS DealOwner,
+  TRIM(TheHubSales.idealClient) AS idealClient,
+  row_number() over(partition by InstagramURL, ContactDate, InstaHandle) AS row_count, 
+  
+  FROM
+  `test1-9d3bc.firestore_export.ManualLeadss` ManualLeads
+  
+  FULL OUTER JOIN
+  `test1-9d3bc.firestore_export.TheHubOutreach` TheHubOutreach 
+  
+  ON  
+  ManualLeads.instagram_URL = TheHubOutreach.InstagramURL 
+  
+  FULL OUTER JOIN
+  `test1-9d3bc.firestore_export.TheHubSalesPipelines` TheHubSales
+  
+  ON
+  TheHubOutreach.id = TheHubSales.id
+)
+
+SELECT
+  *,
+
+  CASE
+  WHEN LgInstagramURL IS NOT NULL AND LgNot_Unique IS NULL THEN 'manual'
+  WHEN OTR_InstagramURL IS NOT NULL AND LgInstagramURL IS NULL THEN 'recycled'
+  ELSE null END LeadType,
+  
+  CASE
+  WHEN LgDate IS NOT NULL AND OTR_ContactDate IS NULL AND Sales_Date IS NULL THEN LgDate
+  WHEN OTR_ContactDate IS NOT NULL AND Sales_Date IS NULL THEN OTR_ContactDate
+  WHEN Sales_Date IS NOT NULL THEN Sales_Date END Universal_Date,  
+  
+  CASE
+  WHEN OTR_messageSender IS NOT NULL AND Sales_Pipeline IS NULL THEN '2023 Outreach'
+  ELSE Sales_Pipeline END Sales_Pipelinee,  
+  
+  CASE
+  WHEN OTR_messageSender IS NOT NULL AND Sales_MethodOfBooking IS NULL THEN 'Traditional Outreach'
+  WHEN Sales_MethodOfBooking LIKE '%Outreach%' THEN 'Traditional Outreach'
+  WHEN Sales_Pipeline = 'Referrals 2023' THEN 'Referral'
+  WHEN Sales_MethodOfBooking = '%Referral%' THEN 'Referral'
+  WHEN Sales_MethodOfBooking = '%Cold Call%' THEN 'Cold Call'
+  WHEN Sales_Pipeline = 'Fortis Website Leads' THEN 'Fortis Website Leads'
+  WHEN Sales_Pipeline = '2023 Outreach' AND Sales_MethodOfBooking IS NULL THEN 'Traditional Outreach'
+  ELSE Sales_MethodOfBooking END Sales_MethodOfBookingg,  
+  
+  CASE
+  WHEN Sales_MeetingBooker IS NULL THEN OTR_AppointmentSetter ELSE Sales_MeetingBooker END AppointmentSetterAll,  
+  
+  CASE
+  WHEN LgInstagramURL = OTR_InstagramURL AND OTR_InstagramURL IS NOT NULL AND LgNot_Unique IS NULL THEN "Uploaded" ELSE NULL END Uploaded,  
+  
+  CASE
+  WHEN LgInstagramURL = OTR_InstagramURL AND OTR_InstagramURL IS NOT NULL AND OTR_messageSender IS NOT NULL AND LgNot_Unique IS NULL THEN "UniqueLeadMessaged" ELSE NULL END
+  UniqueLeadMessaged,  
+  
+  CASE
+  WHEN OTR_InstagramURL IS NOT NULL AND OTR_Messaged = 'false' AND OTR_Rejected = 'false' AND LgNot_Unique IS NULL THEN "Not Reviewed" ELSE NULL END NotReviewed,  
+  
+  CASE
+  WHEN Sales_PipelineStage = "Conversation Started" OR Sales_PipelineStage = "Interested" OR Sales_PipelineStage = "New Lead" OR Sales_PipelineStage = "New Web Lead" OR
+  Sales_PipelineStage = "New Referral"  THEN "Interested" ELSE NULL END Interested_Convo,  
+  
+  CASE
+  WHEN Sales_PipelineStage = "No Show" OR Sales_PipelineStage = "No show" THEN "No Show" ELSE NULL END No_Show,  
+  
+  CASE
+  WHEN Sales_PipelineStage = "Signed Up" OR Sales_PipelineStage = "Signed up" THEN "Signed Up" ELSE NULL END Signed_Up,  
+  
+  CASE
+  WHEN Sales_PipelineStage = "Meeting Seen" OR Sales_PipelineStage = "Meeting seen" THEN "Meeting Seen" ELSE NULL END Meeting_Seen,  
+  
+  CASE
+  WHEN Sales_PipelineStage Like "%Meeting Booked%" OR Sales_PipelineStage Like "%Meeting Booked%" THEN "Meeting Booked" ELSE NULL END Meeting_Booked,
+  
+  CASE
+  WHEN Sales_Pipeline = "Referrals 2023" AND Sales_PipelineStage = "New Lead" THEN "New Referral" ELSE NULL END New_Referral,  
+  
+  CASE
+  WHEN Sales_PipelineStage = "Rebooked" OR Sales_PipelineStage = "Rescheduled" OR Sales_PipelineStage Like "%Resch%" THEN "Rebooked" ELSE NULL END Rebooked,  
+
+  CASE
+  WHEN Sales_PipelineStage = "Bin" OR Sales_PipelineStage = "bin" THEN "Bin" ELSE NULL END Bin,  
+  
+  CASE
+  WHEN Sales_Pipeline = "Referrals 2023" AND Sales_PipelineStage = "Lead Contacted" THEN "Contacted" ELSE NULL END Referrals_Contacted,  
+  
+  CASE
+  WHEN Sales_accountUsedToBook IS NULL THEN OTR_InstaHandle ELSE Sales_accountUsedToBook END InstaHandleAll,  
+  
+  CASE
+  WHEN LgNot_Unique IS NULL THEN "Unique" ELSE NULL END Unique_Leads,  
+  
+  CASE
+  WHEN row_count = 1 AND OTR_Messaged = "true" THEN "Message Sent" ELSE NULL END Messages_Sent,
+  
+ 
+  FROM
+  MasterTable
+  
+  WHERE
+  MasterTable.Sales_Pipeline != "Customer Journey (Coach Success)" OR MasterTable.Sales_id is null
+)
+)

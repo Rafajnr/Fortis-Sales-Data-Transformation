@@ -1,0 +1,59 @@
+SELECT 
+  id,
+  Sales_Date,
+  Pipeline,
+  PipelineStage,
+  MethodOfBooking,
+  MeetingBooker,
+  accountUsedToBook,
+  Status,
+  idealClient,
+  DealOwner,
+  id_appearance
+
+FROM
+(
+WITH TheHubSalesPipeline AS
+
+(
+SELECT
+  CASE WHEN JSON_VALUE(data, "$.id") = "" THEN NULL ELSE JSON_VALUE(data, "$.id") END AS id,
+  JSON_VALUE(data, '$.date') AS Date,
+  CASE WHEN JSON_VALUE(data, "$.pipeline") = "" THEN NULL ELSE JSON_VALUE(data, "$.pipeline") END AS Pipeline,
+  CASE WHEN JSON_VALUE(data, "$.stage") = "" THEN NULL ELSE JSON_VALUE(data, "$.stage") END AS PipelineStage,
+  CASE WHEN JSON_VALUE(data, "$.method") = "" THEN NULL ELSE JSON_VALUE(data, "$.method") END AS MethodOfBooking,
+  CASE WHEN JSON_VALUE(data, "$.meetingBooker") = "" THEN NULL ELSE JSON_VALUE(data, "$.meetingBooker") END AS MeetingBooker,
+  CASE WHEN JSON_VALUE(data, "$.status") = "" THEN NULL ELSE JSON_VALUE(data, "$.status") END AS Status,
+  CASE WHEN JSON_VALUE(data, "$.accountUsedToBook") = "" THEN NULL ELSE JSON_VALUE(data, "$.accountUsedToBook") END AS accountUsedToBook,
+  CASE WHEN JSON_VALUE(data, "$.idealClient") = "" THEN NULL ELSE JSON_VALUE(data, "$.idealClient") END AS idealClient,
+  TRIM(REPLACE(CASE WHEN JSON_VALUE(data, "$.owner") = "" THEN NULL ELSE JSON_VALUE(data, "$.owner") END,"undefined, ","")) AS DealOwner,
+  CASE WHEN JSON_VALUE(data, '$.time') = "" THEN NULL ELSE JSON_VALUE(data, "$.time") END AS Time,
+  RTRIM(LEFT (JSON_VALUE(data, '$.date'),2),"/") AS DAY,
+  RIGHT (JSON_VALUE(data, '$.date'),4) AS YEAR,
+  REPLACE(RTRIM(LEFT(RIGHT (JSON_VALUE(data, '$.date'),7),2),"/"),"/","") AS MONTH, 
+   
+FROM 
+  `test1-9d3bc.firestore_export.PipelineStage_raw_latest` 
+
+)
+
+SELECT
+  id,
+  DATE(CONCAT(YEAR,"-",MONTH,"-",DAY)) AS Sales_Date,
+  Pipeline,
+  Replace(Replace(PipelineStage,"Meeting Booked (Including meetings that have a confirmed rescheduled time)","Meeting Booked"), "Meeting booked", "Meeting Booked")   PipelineStage, 
+  MethodOfBooking,
+  MeetingBooker,
+  accountUsedToBook,
+  idealClient,
+  Status,
+  DealOwner,
+  row_number() over (partition by id, Pipeline, PipelineStage) AS rn, 
+  row_number() over (partition by id) AS  id_appearance
+
+FROM
+  TheHubSalesPipeline
+) TheHubSalesPipeline
+
+WHERE 
+  rn < 2
